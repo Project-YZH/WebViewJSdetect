@@ -1,0 +1,295 @@
+class TraceRule:
+    """
+    a rule container, which include a rule and a related checking function
+    规则容器，包含规则及其相关的检查方法
+    """
+
+    def __init__(self, key, value, G): # 初始化对象 包含键 值 图
+
+        self.key = key
+        self.value = value
+        self.graph = G
+
+    def exist_func(self, func_names, path):
+        """
+        check whether in the path, all functions within {func_names} exists
+        检查路径中是否包含指定的函数名
+        Args:
+            func_names: a list of function names that need to appear in the path
+            path: the path need to be checked
+
+        Returns:
+            checking result
+        """
+        called_func_list = set()
+        for node in path:
+            childern = self.graph.get_all_child_nodes(node)  # 获取当前节点的所有子节点
+            for child in childern:
+                cur_node = self.graph.get_node_attr(child) # 获取子节点属性
+                if 'type' in cur_node:
+                    if cur_node['type'] == 'AST_CALL' or cur_node['type'] == 'AST_METHOD_CALL':
+                        # 如果该节点是函数调用（AST_CALL 或 AST_METHOD_CALL）
+                        cur_func = self.graph.get_name_from_child(child)# 获取被调用的函数名
+                        called_func_list.add(cur_func)
+
+        for called_func_name in called_func_list: # 如果任何一个调用的函数在目标列表中，则返回 True
+            if called_func_name in func_names:
+                return True
+
+        return False
+
+    def not_exist_func(self, func_names, path):
+        """
+        check if there exist a function named func_names in the path
+        检查路径中是否不包含指定的函数名
+        """
+        return not self.exist_func(func_names, path)
+
+    def start_with_func(self, func_names, path):
+        """
+        check whether a path starts with a function
+        检查路径是否以指定的函数调用开头
+        Args:
+            func_names: the possible function names
+            path: the path needed to be checked
+        Return:
+            True or False
+        """
+        start_node = path[0]
+
+        childern = self.graph.get_all_child_nodes(start_node)
+        for child in childern:
+            cur_node = self.graph.get_node_attr(child)
+            if 'type' in cur_node:
+                if cur_node['type'] == 'AST_CALL' or cur_node['type'] == 'AST_METHOD_CALL':
+                    cur_func = self.graph.get_name_from_child(child)
+                    if cur_func not in func_names:
+                        # if not current, maybe inside the call there is another call
+                        continue
+                    return cur_func in func_names
+        return False
+
+    def not_start_with_func(self, func_names, path):
+        """
+        check whether a path starts with a function
+        检查路径是否不以指定的函数调用开头
+        Args:
+            func_names: the possible function names
+            path: the path needed to be checked
+        Return:
+            True or False
+        """
+        return not self.start_with_func(func_names, path)
+
+    def not_start_within_file(self, file_names, path):
+        """
+        check whether a path starts within a file
+        检查路径是否不在指定文件中开始
+        Args:
+            file_names: the possible file names
+            path: the path to be checked
+        Return:
+            True or False
+        """
+        start_node = path[0]
+        return not self.start_within_file(file_names, path)
+
+    def end_with_func(self, func_names, path):
+        """
+        check whether a path ends with a function
+        检查路径是否以指定的函数调用结束
+        Args:
+            func_names: the possible function names
+            path: the path needed to be checked
+        Return:
+            True or False
+        """
+        end_node = path[-1]
+
+        childern = self.graph.get_all_child_nodes(end_node)
+        for child in childern:
+            cur_node = self.graph.get_node_attr(child)
+            if 'type' in cur_node:
+                if cur_node['type'] == 'AST_CALL' or cur_node['type'] == 'AST_METHOD_CALL':
+                    cur_func = self.graph.get_name_from_child(child)
+                    if cur_func not in func_names:
+                        # if not current, maybe inside the call there is another call
+                        continue
+                    return cur_func in func_names
+
+    def start_within_file(self, file_names, path):
+        """
+        check whether a path starts within a file
+        检查路径是否在指定文件中开始
+        Args:
+            file_names: the possible file names
+            path: the path to be checked
+        Return:
+            True or False
+        """
+        start_node = path[0]
+
+        file_name = self.graph.get_node_file_path(start_node)
+        cur_node = self.graph.get_node_attr(start_node)
+        if file_name is None:
+            return False
+        file_name = file_name if '/' not in file_name else file_name.split('/')[-1]
+        return file_name in file_names
+
+    def start_with_var(self, var_names, path):
+        #TODO: not finished, need to update the var name finding algorithm
+        """
+        check whether a path starts with a variable
+        检查路径是否以指定的变量名开始
+        Args:
+            var_names: the possible var names
+            path: the path to be checked
+        Return:
+            True or False
+        """
+        start_node = path[0]
+
+        path_start_var_name = self.graph.get_name_from_child(start_node)
+        # print('debug path_start_var_name: ', path_start_var_name)
+        # for item in self.graph.get_edge_attr(path[0], path[1]):
+        #     start_obj = self.graph.get_edge_attr(path[0], path[1])[item].get('obj')
+        #     print('debug start_obj: ', start_obj)
+        #     if start_obj==None:
+        #         continue
+        #     names = self.graph.get_prop_names(start_obj)
+        #     print('debug prop names: ', names)
+
+        cur_node = self.graph.get_node_attr(start_node)
+        if path_start_var_name is None:
+            return False
+        return path_start_var_name in var_names
+
+    def start_with_sensitiveSource(self, _, path):
+        """
+        检查路径是否从敏感数据源开始
+        """
+        if len(path) > 1:
+            for item in self.graph.get_edge_attr(path[0], path[1]):
+                start_obj = self.graph.get_edge_attr(path[0], path[1])[item].get('obj')
+                # print('debug start_obj sensitiveSource: ', start_obj)
+                if start_obj == None:
+                    continue
+                offsprings = self.graph.get_off_spring(start_obj)
+                for off in offsprings:
+                    if off in self.graph.sensitiveSource:
+                        return True
+        return False
+
+    def has_user_input(self, _, path):
+        """
+        check if any node in this path contains user input
+        user input is defined as in the http, process or 
+        the arguments of the module entrance functions
+        检查路径中是否包含用户输入
+        
+        we check by the obj in the edges
+        Args: 
+            path: the path
+        Return:
+            True or False
+        """
+        pre_node = None
+        for node in path:
+            if not pre_node:
+                pre_node = node
+                continue
+
+            cur_edges = self.graph.get_edge_attr(pre_node, node)
+            # print("{} --{}--> {}".format(pre_node, cur_edges, node))
+            if not cur_edges:
+                continue
+            for k in cur_edges:
+                if 'type:TYPE' in cur_edges[k] and cur_edges[k]['type:TYPE'] == "OBJ_REACHES":
+                    obj = cur_edges[k]['obj']
+                    obj_attr = self.graph.get_node_attr(obj)
+                    """
+                    print('debug has user input: ', obj, self.graph.get_name_from_child(obj))
+                    names = self.graph.get_prop_names(obj)
+                    print('debug prop names: ', names)
+                    # self.graph.getpro
+                    props = self.graph.get_prop_obj_nodes(obj)
+                    for prop in props:
+                        print('debug prop attr: ', prop, self.graph.get_node_attr(prop))
+                    """
+                    if 'tainted' in obj_attr and obj_attr['tainted']:
+                        return True
+                    off_spring = self.graph.get_off_spring(obj)
+                    for child in off_spring:
+                        child_attr = self.graph.get_node_attr(child)
+                        if 'tainted' in child_attr and child_attr['tainted']:
+                            return True
+            pre_node = node
+
+            """
+            all_child = self.graph.get_all_child_nodes(node)
+            objs = []
+            for child in all_child:
+                objs += self.graph.get_in_edges(child, edge_type='OBJ_TO_AST')
+            for obj in objs:
+                node_attr = self.graph.get_node_attr(obj[0])
+                # here we only keep the obj which in the OBJ_REACHES edges
+                if 'tainted' in node_attr and node_attr['tainted']:
+                    print(obj[0], node_attr, self.graph.get_node_attr(obj[1]))
+                    return True
+            """
+        if self.start_within_file(['http.js', 'process.js', 'yargs.js'], path):
+            return True
+        return False
+
+    # def start_with_var_offspring(self, var_names, path):
+    #     # TODO: not finished, need to update the var name finding algorithm
+    #     """
+    #     check whether a path starts with a variable
+    #     Args:
+    #         var_names: the possible var names
+    #         path: the path to be checked
+    #     Return:
+    #         True or False
+    #     """
+    #     start_node = path[0]
+    #     ancestors = self.graph.get_ancestors_in(start_node, edge_types=)
+    #     for ac in ancestors:
+    #         if not ac:
+    #             continue
+    #         print('debug ancestor name: ', self.graph.get_name_from_child(ac))
+    #
+    #     path_start_var_name = self.graph.get_name_from_child(start_node)
+    #     print('debug path_start_var_name: ', path_start_var_name)
+    #
+    #     cur_node = self.graph.get_node_attr(start_node)
+    #     if path_start_var_name is None:
+    #         return False
+    #     return path_start_var_name in var_names
+
+    def check(self, path):
+        """
+        select the checking function and run it based on the key value
+        根据 key 选择并执行相应的检查函数
+        Return:
+            the running result of the obj
+        """
+        key_map = {
+            "exist_func": self.exist_func,
+            "not_exist_func": self.not_exist_func,
+            "start_with_func": self.start_with_func,
+            "not_start_with_func": self.not_start_with_func,
+            "start_within_file": self.start_within_file,
+            "not_start_within_file": self.not_start_within_file,
+            "end_with_func": self.end_with_func,
+            "has_user_input": self.has_user_input,
+            "start_with_var": self.start_with_var,
+            "start_with_sensitiveSource": self.start_with_sensitiveSource
+            # "start_with_var_offspring": self.start_with_var_offspring
+        }
+
+        if self.key in key_map:
+            check_function = key_map[self.key]
+        else:
+            return False
+
+        return check_function(self.value, path)
