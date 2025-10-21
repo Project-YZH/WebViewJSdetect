@@ -35,9 +35,6 @@ WebViewJSdetect consists of two primary components:
 - **Thread Executor**
   Performs abstract interpretation on WebView-embedded JavaScript, interacts with the modeled Android WebView API, propagates taint from attacker-controlled inputs, and checks if taint reaches sensitive sinks without sanitization.
 
-> 
->
-> *Note*：The Figure (System Architecture) illustrates the interaction between the scheduler and executor.
 
 ------
 
