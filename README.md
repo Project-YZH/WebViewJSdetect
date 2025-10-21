@@ -35,7 +35,7 @@ WebViewJSdetect consists of two primary components:
 - **Thread Executor**
   Performs abstract interpretation on WebView-embedded JavaScript, interacts with the modeled Android WebView API, propagates taint from attacker-controlled inputs, and checks if taint reaches sensitive sinks without sanitization.
 
-> ![图片2](C:\Users\YZH\Desktop\WebViewJSdetect一次投稿-computer networks\Android-coco图\图片2.png)
+> 
 >
 > *Note*：The Figure (System Architecture) illustrates the interaction between the scheduler and executor.
 
@@ -64,8 +64,8 @@ WebViewJSdetect/
 - **Python**：3.8–3.11 recommended (3.7+ may work).
 - **Node.js**：12+ (LTS recommended) — only if JS tooling is enabled.
 - **Bash & Git**：Required for scripts and cloning.
-- **Python dependencies **：Refer to  `requirements.txt` (static analysis/graph calculation/parsing, etc.)
-- **Node dependencies **：If using JS parsing/building tools, please refer to  `package.json`
+- **Python dependencies**：Refer to  `requirements.txt` (static analysis/graph calculation/parsing, etc.)
+- **Node dependencies**：If using JS parsing/building tools, please refer to  `package.json`
 
 > The final version shall be based on the `requirements.txt` / `package.json` in the code repository.
 
